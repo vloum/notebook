@@ -1,0 +1,199 @@
+# ============================================================
+# NoteBrain - Production Docker Compose
+#
+# Services:
+#   - postgres:  PostgreSQL 17 + pgvector 0.8.0
+#   - app:       Next.js application
+#   - migrator:  Prisma migration runner (one-shot)
+#   - backup:    Scheduled database backup (cron)
+#
+# Usage:
+#   docker compose up -d              # Start all services
+#   docker compose logs -f app        # View app logs
+#   docker compose exec postgres psql -U notebrain -d notebrain  # DB shell
+#
+# First time setup:
+#   docker compose up -d postgres     # Start PG first
+#   docker compose run --rm migrator  # Run migrations
+#   docker compose up -d              # Start everything
+# ============================================================
+
+services:
+  # ============================================================
+  # PostgreSQL 17 + pgvector 0.8.0
+  # ============================================================
+  postgres:
+    image: pgvector/pgvector:0.8.0-pg17
+    container_name: notebrain-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-notebrain}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-notebrain}
+      # Performance tuning via environment (overrides postgresql.conf)
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      # Data persistence (named volume)
+      - pg_data:/var/lib/postgresql/data
+      # Custom configuration
+      - ./docker/postgres/postgresql.conf:/etc/postgresql/postgresql.conf:ro
+      # Initialization scripts (run once on first start)
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+      # Backup directory (bind mount for host access)
+      - ${BACKUP_PATH:-./backups}:/backups
+    command: >
+      postgres
+        -c config_file=/etc/postgresql/postgresql.conf
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-notebrain} -d ${POSTGRES_DB:-notebrain}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: "2.0"
+        reservations:
+          memory: 1G
+          cpus: "0.5"
+    shm_size: "256mb"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+  # ============================================================
+  # Prisma Migration Runner (one-shot service)
+  # ============================================================
+  migrator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: builder
+    container_name: notebrain-migrator
+    environment:
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-notebrain}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-notebrain}?schema=public"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: npx prisma migrate deploy
+    profiles:
+      - migration
+
+  # ============================================================
+  # Next.js Application
+  # ============================================================
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: notebrain-app
+    restart: unless-stopped
+    environment:
+      # Database
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-notebrain}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-notebrain}?schema=public"
+      # NextAuth
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:?Set NEXTAUTH_SECRET in .env}
+      NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
+      # OpenAI (Phase 2)
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_EMBEDDING_MODEL: ${OPENAI_EMBEDDING_MODEL:-text-embedding-3-small}
+      # App config
+      LONG_DOC_THRESHOLD: ${LONG_DOC_THRESHOLD:-2000}
+      NODE_ENV: production
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: "1.0"
+        reservations:
+          memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "3"
+
+  # ============================================================
+  # Scheduled Database Backup (cron container)
+  # ============================================================
+  backup:
+    image: pgvector/pgvector:0.8.0-pg17
+    container_name: notebrain-backup
+    restart: unless-stopped
+    environment:
+      PGHOST: postgres
+      PGPORT: "5432"
+      PGDATABASE: ${POSTGRES_DB:-notebrain}
+      PGUSER: ${POSTGRES_USER:-notebrain}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PG_CONTAINER: notebrain-postgres
+      BACKUP_ROOT: /backups
+    volumes:
+      - ${BACKUP_PATH:-./backups}:/backups
+      - ./scripts/backup.sh:/usr/local/bin/backup.sh:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    # Run cron: daily at 2:00, weekly at Sunday 3:00, cleanup daily
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        # Install cron
+        apt-get update -qq && apt-get install -y -qq cron > /dev/null 2>&1
+
+        # Create cron jobs
+        mkdir -p /backups/daily /backups/weekly /backups/wal /backups/logs
+
+        echo "0 2 * * * /usr/local/bin/backup.sh all >> /backups/logs/cron.log 2>&1" > /etc/cron.d/notebrain-backup
+        echo "0 3 * * 0 /usr/local/bin/backup.sh weekly >> /backups/logs/cron.log 2>&1" >> /etc/cron.d/notebrain-backup
+        echo "" >> /etc/cron.d/notebrain-backup
+
+        chmod 0644 /etc/cron.d/notebrain-backup
+        crontab /etc/cron.d/notebrain-backup
+
+        echo "[$(date)] Backup cron started"
+        echo "  Daily backup:  02:00 every day"
+        echo "  Weekly backup: 03:00 every Sunday"
+        echo "  Retention: daily=7d, weekly=4w, wal=7d"
+
+        # Run initial backup on start
+        /usr/local/bin/backup.sh daily || true
+
+        # Start cron in foreground
+        cron -f
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "0.5"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+# ============================================================
+# Volumes
+# ============================================================
+volumes:
+  pg_data:
+    driver: local
+    name: notebrain_pg_data

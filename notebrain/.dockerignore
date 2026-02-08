@@ -1,0 +1,50 @@
+# Dependencies
+node_modules
+mcp-server/node_modules
+
+# Build output
+.next
+mcp-server/dist
+
+# Git
+.git
+.gitignore
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode
+.idea
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docs
+docs/
+plan.md
+README.md
+LICENSE
+
+# Docker
+docker-compose.yml
+Dockerfile
+docker/
+
+# Scripts
+scripts/
+
+# Backups
+backups/
+
+# Tests
+coverage/
+__tests__/
+*.test.ts
+*.spec.ts
+
+# Generated
+src/generated/

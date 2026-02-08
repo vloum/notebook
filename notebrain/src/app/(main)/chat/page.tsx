@@ -1,8 +1,7 @@
 "use client";
 
 import { useChat } from "@ai-sdk/react";
-import type { Message } from "ai";
-import { useRef, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   Send,
   Bot,
@@ -18,104 +17,11 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import Link from "next/link";
 
-function ToolIndicator({ part }: { part: { type: string; toolInvocation?: { toolName: string; args: Record<string, string>; state: string } } }) {
-  if (part.type !== "tool-invocation" || !part.toolInvocation) return null;
-
-  const { toolName, args, state } = part.toolInvocation;
-
-  const icons: Record<string, React.ReactNode> = {
-    search_documents: <FileText className="h-3 w-3" />,
-    get_document: <FileText className="h-3 w-3" />,
-    fetch_url: <Globe className="h-3 w-3" />,
-    create_document: <FileText className="h-3 w-3" />,
-    list_notebooks: <FileText className="h-3 w-3" />,
-  };
-
-  const labels: Record<string, string> = {
-    search_documents: `搜索文档: "${args.query || ""}"`,
-    get_document: "读取文档...",
-    fetch_url: `抓取链接: ${args.url || ""}`,
-    create_document: `创建文档: "${args.title || ""}"`,
-    list_notebooks: "查看笔记本结构",
-  };
-
-  return (
-    <div className="mb-2 text-xs text-muted-foreground bg-muted/50 rounded-lg p-2 flex items-center gap-2">
-      {icons[toolName] || <FileText className="h-3 w-3" />}
-      <span>{labels[toolName] || toolName}</span>
-      {state === "call" && <Loader2 className="h-3 w-3 animate-spin ml-auto" />}
-      {state === "result" && <span className="ml-auto text-green-500">完成</span>}
-    </div>
-  );
-}
-
-function MessageBubble({ message }: { message: Message }) {
-  // Use parts if available
-  const parts = (message as unknown as { parts?: Array<{ type: string; text?: string; toolInvocation?: { toolName: string; args: Record<string, string>; state: string } }> }).parts;
-
-  if (parts && parts.length > 0) {
-    return (
-      <>
-        {parts.map((part, i) => {
-          if (part.type === "tool-invocation") {
-            return <ToolIndicator key={i} part={part} />;
-          }
-          if (part.type === "text" && part.text) {
-            return (
-              <div key={i} className="prose prose-neutral dark:prose-invert prose-sm max-w-none">
-                <ReactMarkdown
-                  remarkPlugins={[remarkGfm]}
-                  components={{
-                    a: ({ href, children }) => {
-                      if (href?.startsWith("/entries/")) {
-                        return (
-                          <Link href={href} className="text-primary hover:underline inline-flex items-center gap-1">
-                            <FileText className="h-3 w-3" />
-                            {children}
-                          </Link>
-                        );
-                      }
-                      return (
-                        <a href={href} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
-                          {children}
-                        </a>
-                      );
-                    },
-                  }}
-                >
-                  {part.text}
-                </ReactMarkdown>
-              </div>
-            );
-          }
-          return null;
-        })}
-      </>
-    );
-  }
-
-  // Fallback to content
-  if (message.content) {
-    return (
-      <div className="prose prose-neutral dark:prose-invert prose-sm max-w-none">
-        <ReactMarkdown remarkPlugins={[remarkGfm]}>
-          {typeof message.content === "string" ? message.content : ""}
-        </ReactMarkdown>
-      </div>
-    );
-  }
-
-  return null;
-}
-
 export default function ChatPage() {
-  const { messages, input, handleInputChange, handleSubmit, isLoading, error } =
-    useChat({
-      api: "/api/chat",
-      maxSteps: 5,
-    });
-
+  const { messages, sendMessage, status, error } = useChat();
+  const [input, setInput] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
+  const isLoading = status === "streaming" || status === "submitted";
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -123,10 +29,17 @@ export default function ChatPage() {
     }
   }, [messages]);
 
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!input.trim() || isLoading) return;
+    sendMessage({ parts: [{ type: "text" as const, text: input.trim() }] });
+    setInput("");
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      handleSubmit(e as unknown as React.FormEvent);
+      handleSubmit(e);
     }
   };
 
@@ -152,11 +65,7 @@ export default function ChatPage() {
                   <button
                     key={i}
                     className="text-left text-sm p-3 rounded-lg border border-border hover:bg-accent/50 transition-colors text-muted-foreground hover:text-foreground"
-                    onClick={() => {
-                      handleInputChange({
-                        target: { value: suggestion },
-                      } as React.ChangeEvent<HTMLTextAreaElement>);
-                    }}
+                    onClick={() => setInput(suggestion)}
                   >
                     {suggestion}
                   </button>
@@ -169,13 +78,102 @@ export default function ChatPage() {
             <div key={message.id} className="flex gap-3">
               <div
                 className={`shrink-0 h-8 w-8 rounded-full flex items-center justify-center ${
-                  message.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted"
+                  message.role === "user"
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted"
                 }`}
               >
-                {message.role === "user" ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
+                {message.role === "user" ? (
+                  <User className="h-4 w-4" />
+                ) : (
+                  <Bot className="h-4 w-4" />
+                )}
               </div>
               <div className="flex-1 min-w-0">
-                <MessageBubble message={message} />
+                {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                {message.parts.map((part: any, i: number) => {
+                  // Tool invocation parts (v6: type starts with "tool-")
+                  if (part.type?.startsWith("tool-")) {
+                    const toolName = part.toolName || part.toolInvocation?.toolName || "";
+                    const args = part.args || part.input || part.toolInvocation?.args || {};
+                    const state = part.state || part.toolInvocation?.state || "call";
+
+                    const icons: Record<string, React.ReactNode> = {
+                      search_documents: <FileText className="h-3 w-3" />,
+                      get_document: <FileText className="h-3 w-3" />,
+                      fetch_url: <Globe className="h-3 w-3" />,
+                      create_document: <FileText className="h-3 w-3" />,
+                      list_notebooks: <FileText className="h-3 w-3" />,
+                    };
+
+                    const labels: Record<string, string> = {
+                      search_documents: `搜索: "${args.query || ""}"`,
+                      get_document: "读取文档...",
+                      fetch_url: `抓取: ${args.url || ""}`,
+                      create_document: `创建: "${args.title || ""}"`,
+                      list_notebooks: "查看笔记本",
+                    };
+
+                    return (
+                      <div
+                        key={i}
+                        className="mb-2 text-xs text-muted-foreground bg-muted/50 rounded-lg p-2 flex items-center gap-2"
+                      >
+                        {icons[toolName] || <FileText className="h-3 w-3" />}
+                        <span>{labels[toolName] || toolName}</span>
+                        {(state === "call" || state === "input-streaming") && (
+                          <Loader2 className="h-3 w-3 animate-spin ml-auto" />
+                        )}
+                        {state === "result" && (
+                          <span className="ml-auto text-green-500">完成</span>
+                        )}
+                      </div>
+                    );
+                  }
+
+                  // Text parts
+                  if (part.type === "text" && part.text) {
+                    return (
+                      <div
+                        key={i}
+                        className="prose prose-neutral dark:prose-invert prose-sm max-w-none"
+                      >
+                        <ReactMarkdown
+                          remarkPlugins={[remarkGfm]}
+                          components={{
+                            a: ({ href, children }) => {
+                              if (href?.startsWith("/entries/")) {
+                                return (
+                                  <Link
+                                    href={href}
+                                    className="text-primary hover:underline inline-flex items-center gap-1"
+                                  >
+                                    <FileText className="h-3 w-3" />
+                                    {children}
+                                  </Link>
+                                );
+                              }
+                              return (
+                                <a
+                                  href={href}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-primary hover:underline"
+                                >
+                                  {children}
+                                </a>
+                              );
+                            },
+                          }}
+                        >
+                          {part.text}
+                        </ReactMarkdown>
+                      </div>
+                    );
+                  }
+
+                  return null;
+                })}
               </div>
             </div>
           ))}
@@ -194,7 +192,7 @@ export default function ChatPage() {
 
           {error && (
             <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-lg">
-              {error.message || "请求失败，请检查 OpenAI API Key 配置"}
+              {error.message || "请求失败，请检查 AI 模型配置"}
             </div>
           )}
         </div>
@@ -202,17 +200,28 @@ export default function ChatPage() {
 
       {/* Input */}
       <div className="border-t border-border p-4">
-        <form onSubmit={handleSubmit} className="max-w-3xl mx-auto flex items-end gap-2">
+        <form
+          onSubmit={handleSubmit}
+          className="max-w-3xl mx-auto flex items-end gap-2"
+        >
           <Textarea
             value={input}
-            onChange={handleInputChange}
+            onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="问我任何关于你知识库的问题...（Enter 发送，Shift+Enter 换行）"
             className="resize-none min-h-[44px] max-h-[200px]"
             rows={1}
           />
-          <Button type="submit" size="icon" disabled={isLoading || !input.trim()}>
-            {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+          <Button
+            type="submit"
+            size="icon"
+            disabled={isLoading || !input.trim()}
+          >
+            {isLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="h-4 w-4" />
+            )}
           </Button>
         </form>
         <p className="text-xs text-muted-foreground text-center mt-2">

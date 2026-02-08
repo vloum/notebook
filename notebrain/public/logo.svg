@@ -1,0 +1,39 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background circle -->
+  <circle cx="256" cy="256" r="240" fill="url(#gradient)" />
+  
+  <!-- Brain icon (simplified) -->
+  <g transform="translate(128, 120)">
+    <!-- Left hemisphere -->
+    <path d="M128 40C100 20 60 20 40 45C20 70 25 100 35 120C20 130 10 155 20 180C30 205 55 215 75 215C80 235 100 260 128 270" 
+          stroke="white" stroke-width="16" stroke-linecap="round" fill="none" />
+    <!-- Right hemisphere -->
+    <path d="M128 40C156 20 196 20 216 45C236 70 231 100 221 120C236 130 246 155 236 180C226 205 201 215 181 215C176 235 156 260 128 270" 
+          stroke="white" stroke-width="16" stroke-linecap="round" fill="none" />
+    <!-- Center line -->
+    <line x1="128" y1="40" x2="128" y2="270" stroke="white" stroke-width="12" stroke-linecap="round" opacity="0.6" />
+    <!-- Neural connections -->
+    <circle cx="75" cy="100" r="8" fill="white" opacity="0.8" />
+    <circle cx="181" cy="100" r="8" fill="white" opacity="0.8" />
+    <circle cx="55" cy="165" r="8" fill="white" opacity="0.8" />
+    <circle cx="201" cy="165" r="8" fill="white" opacity="0.8" />
+    <circle cx="100" cy="220" r="6" fill="white" opacity="0.8" />
+    <circle cx="156" cy="220" r="6" fill="white" opacity="0.8" />
+  </g>
+  
+  <!-- Document icon overlay (bottom-right) -->
+  <g transform="translate(340, 340)">
+    <rect x="0" y="0" width="80" height="100" rx="12" fill="white" />
+    <rect x="16" y="24" width="48" height="6" rx="3" fill="url(#gradient)" opacity="0.6" />
+    <rect x="16" y="40" width="36" height="6" rx="3" fill="url(#gradient)" opacity="0.4" />
+    <rect x="16" y="56" width="44" height="6" rx="3" fill="url(#gradient)" opacity="0.6" />
+    <rect x="16" y="72" width="28" height="6" rx="3" fill="url(#gradient)" opacity="0.4" />
+  </g>
+  
+  <defs>
+    <linearGradient id="gradient" x1="0" y1="0" x2="512" y2="512">
+      <stop offset="0%" stop-color="#6366f1" />
+      <stop offset="100%" stop-color="#8b5cf6" />
+    </linearGradient>
+  </defs>
+</svg>

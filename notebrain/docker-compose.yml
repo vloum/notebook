@@ -21,6 +21,11 @@
 services:
   # ============================================================
   # PostgreSQL 17 + pgvector 0.8.0
+  #
+  # 镜像说明：pgvector/pgvector:0.8.0-pg17 就是 PostgreSQL 17
+  # 它基于官方 postgres:17 镜像，预编译安装了 pgvector 扩展
+  # 所以这个容器 = 完整的 PostgreSQL 数据库 + 向量搜索能力
+  # 不需要单独再跑一个 postgres 容器
   # ============================================================
   postgres:
     image: pgvector/pgvector:0.8.0-pg17

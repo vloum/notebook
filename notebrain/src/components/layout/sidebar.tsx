@@ -11,6 +11,7 @@ import {
   ChevronRight,
   FileText,
   FolderOpen,
+  MessageSquare,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -59,6 +60,20 @@ export function Sidebar({ notebooks, tags, collapsed }: SidebarProps) {
         >
           <FileText className="h-4 w-4" />
           全部笔记
+        </Link>
+
+        {/* AI Chat */}
+        <Link
+          href="/chat"
+          className={cn(
+            "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors mt-1",
+            pathname === "/chat"
+              ? "bg-primary/10 text-primary"
+              : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+          )}
+        >
+          <MessageSquare className="h-4 w-4" />
+          AI 助手
         </Link>
 
         {/* Notebooks section */}

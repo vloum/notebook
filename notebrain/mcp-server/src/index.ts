@@ -7,6 +7,7 @@ import { entriesTools } from "./tools/entries.js";
 import { notebooksTools } from "./tools/notebooks.js";
 import { tagsTools } from "./tools/tags.js";
 import { relationsTools } from "./tools/relations.js";
+import { utilsTools } from "./tools/utils.js";
 import { resources } from "./resources/index.js";
 
 // Create MCP server
@@ -23,6 +24,7 @@ const allTools = {
   ...notebooksTools,
   ...tagsTools,
   ...relationsTools,
+  ...utilsTools,
 };
 
 for (const [name, tool] of Object.entries(allTools)) {

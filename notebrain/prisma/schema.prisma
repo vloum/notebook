@@ -1,0 +1,247 @@
+generator client {
+  provider        = "prisma-client"
+  output          = "../src/generated/prisma"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  extensions = [pgvector(map: "vector", schema: "public")]
+}
+
+// ============================================================
+// Users
+// ============================================================
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  email        String   @unique @db.VarChar(255)
+  name         String?  @db.VarChar(100)
+  avatarUrl    String?  @map("avatar_url") @db.VarChar(500)
+  passwordHash String   @map("password_hash") @db.VarChar(255)
+  settings     Json?    @default("{}")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz()
+
+  notebooks Notebook[]
+  entries   Entry[]
+  tags      Tag[]
+  apiKeys   ApiKey[]
+  agentLogs AgentLog[]
+
+  @@map("users")
+}
+
+// ============================================================
+// Notebooks
+// ============================================================
+model Notebook {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  name        String   @db.VarChar(100)
+  description String?  @db.Text
+  icon        String?  @default("📓") @db.VarChar(10)
+  sortOrder   Int      @default(0) @map("sort_order")
+  isDefault   Boolean  @default(false) @map("is_default")
+  isArchived  Boolean  @default(false) @map("is_archived")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz()
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  entries Entry[]
+
+  @@index([userId, isArchived])
+  @@map("notebooks")
+}
+
+// ============================================================
+// Entries (Documents)
+// ============================================================
+
+enum EntryType {
+  note
+  diary
+  experience
+  document
+
+  @@map("entry_type")
+}
+
+enum EntrySource {
+  manual
+  agent
+  import
+
+  @@map("entry_source")
+}
+
+model Entry {
+  id         String      @id @default(uuid()) @db.Uuid
+  userId     String      @map("user_id") @db.Uuid
+  notebookId String      @map("notebook_id") @db.Uuid
+  title      String      @db.VarChar(500)
+  content    String      @db.Text
+  summary    String?     @db.Text
+  type       EntryType   @default(note)
+  source     EntrySource @default(manual)
+  wordCount  Int         @default(0) @map("word_count")
+  version    Int         @default(1)
+  metadata   Json?       @default("{}")
+  isPinned   Boolean     @default(false) @map("is_pinned")
+  isArchived Boolean     @default(false) @map("is_archived")
+  createdAt  DateTime    @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt  DateTime    @updatedAt @map("updated_at") @db.Timestamptz()
+
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  notebook  Notebook       @relation(fields: [notebookId], references: [id])
+  tags      EntryTag[]
+  versions  EntryVersion[]
+  chunks    EntryChunk[]
+  relationsFrom EntryRelation[] @relation("RelationFrom")
+  relationsTo   EntryRelation[] @relation("RelationTo")
+
+  @@index([userId, notebookId, updatedAt(sort: Desc)])
+  @@index([userId, type, updatedAt(sort: Desc)])
+  @@index([userId, updatedAt(sort: Desc)])
+  @@map("entries")
+}
+
+// ============================================================
+// Tags
+// ============================================================
+model Tag {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  name      String   @db.VarChar(50)
+  color     String?  @db.VarChar(20)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz()
+
+  user    User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  entries EntryTag[]
+
+  @@unique([userId, name])
+  @@map("tags")
+}
+
+// ============================================================
+// Entry-Tag (many-to-many)
+// ============================================================
+model EntryTag {
+  entryId String @map("entry_id") @db.Uuid
+  tagId   String @map("tag_id") @db.Uuid
+
+  entry Entry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  tag   Tag   @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([entryId, tagId])
+  @@map("entry_tags")
+}
+
+// ============================================================
+// Entry Relations (document links / lightweight graph)
+// ============================================================
+
+enum RelationType {
+  references
+  continues
+  related
+  contradicts
+  summarizes
+
+  @@map("relation_type")
+}
+
+model EntryRelation {
+  id        String       @id @default(uuid()) @db.Uuid
+  fromId    String       @map("from_id") @db.Uuid
+  toId      String       @map("to_id") @db.Uuid
+  type      RelationType
+  metadata  Json?        @default("{}")
+  createdAt DateTime     @default(now()) @map("created_at") @db.Timestamptz()
+
+  fromEntry Entry @relation("RelationFrom", fields: [fromId], references: [id], onDelete: Cascade)
+  toEntry   Entry @relation("RelationTo", fields: [toId], references: [id], onDelete: Cascade)
+
+  @@unique([fromId, toId, type])
+  @@map("entry_relations")
+}
+
+// ============================================================
+// Entry Chunks (sections for long documents + vector search)
+// ============================================================
+model EntryChunk {
+  id         String   @id @default(uuid()) @db.Uuid
+  entryId    String   @map("entry_id") @db.Uuid
+  chunkIndex Int      @map("chunk_index")
+  heading    String?  @db.Text
+  content    String   @db.Text
+  tokenCount Int?     @map("token_count")
+  lineStart  Int      @map("line_start")
+  lineEnd    Int      @map("line_end")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz()
+
+  entry Entry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+
+  @@index([entryId, chunkIndex])
+  @@map("entry_chunks")
+}
+
+// ============================================================
+// Entry Versions (history)
+// ============================================================
+model EntryVersion {
+  id            String      @id @default(uuid()) @db.Uuid
+  entryId       String      @map("entry_id") @db.Uuid
+  version       Int
+  title         String      @db.VarChar(500)
+  content       String      @db.Text
+  summary       String?     @db.Text
+  changeSummary String?     @map("change_summary") @db.VarChar(500)
+  source        EntrySource @default(manual)
+  wordCount     Int         @default(0) @map("word_count")
+  createdAt     DateTime    @default(now()) @map("created_at") @db.Timestamptz()
+
+  entry Entry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+
+  @@index([entryId, version(sort: Desc)])
+  @@map("entry_versions")
+}
+
+// ============================================================
+// Agent Logs
+// ============================================================
+model AgentLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  action     String   @db.VarChar(50)
+  entryId    String?  @map("entry_id") @db.Uuid
+  entryTitle String?  @map("entry_title") @db.VarChar(500)
+  summary    String?  @db.Text
+  diffStats  Json?    @map("diff_stats")
+  metadata   Json?    @default("{}")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz()
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("agent_logs")
+}
+
+// ============================================================
+// API Keys (MCP authentication)
+// ============================================================
+model ApiKey {
+  id         String    @id @default(uuid()) @db.Uuid
+  userId     String    @map("user_id") @db.Uuid
+  name       String    @db.VarChar(100)
+  keyPrefix  String    @map("key_prefix") @db.VarChar(12)
+  keyHash    String    @unique @map("key_hash") @db.VarChar(64)
+  lastUsedAt DateTime? @map("last_used_at") @db.Timestamptz()
+  expiresAt  DateTime? @map("expires_at") @db.Timestamptz()
+  isActive   Boolean   @default(true) @map("is_active")
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz()
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isActive])
+  @@map("api_keys")
+}

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { EntryCard } from "@/components/entries/entry-card";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, FileText, MessageSquare, BookOpen } from "lucide-react";
 import Link from "next/link";
 
 interface EntryItem {
@@ -68,14 +68,48 @@ export default function HomePage() {
           ))}
         </div>
       ) : entries.length === 0 ? (
-        <div className="text-center py-16">
-          <p className="text-muted-foreground mb-4">还没有任何文档</p>
-          <Button asChild>
-            <Link href="/entries/new">
-              <Plus className="h-4 w-4 mr-2" />
-              创建第一篇文档
-            </Link>
-          </Button>
+        <div className="flex flex-col items-center justify-center py-20">
+          <div className="h-20 w-20 rounded-2xl bg-muted/50 flex items-center justify-center mb-6">
+            <FileText className="h-10 w-10 text-muted-foreground/40" />
+          </div>
+          <h2 className="text-lg font-semibold mb-2">开始构建你的知识库</h2>
+          <p className="text-sm text-muted-foreground mb-8 max-w-sm text-center">
+            创建第一篇文档，或者和 AI 助手对话让它帮你整理资料
+          </p>
+          <div className="flex gap-3">
+            <Button asChild>
+              <Link href="/entries/new">
+                <Plus className="h-4 w-4 mr-2" />
+                新建文档
+              </Link>
+            </Button>
+            <Button variant="outline" asChild>
+              <Link href="/chat">
+                <MessageSquare className="h-4 w-4 mr-2" />
+                AI 助手
+              </Link>
+            </Button>
+          </div>
+          <div className="grid grid-cols-3 gap-6 mt-16 max-w-lg w-full">
+            <div className="text-center">
+              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center mx-auto mb-2">
+                <FileText className="h-5 w-5 text-primary" />
+              </div>
+              <p className="text-xs text-muted-foreground">Markdown 文档</p>
+            </div>
+            <div className="text-center">
+              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center mx-auto mb-2">
+                <MessageSquare className="h-5 w-5 text-primary" />
+              </div>
+              <p className="text-xs text-muted-foreground">AI 问答检索</p>
+            </div>
+            <div className="text-center">
+              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center mx-auto mb-2">
+                <BookOpen className="h-5 w-5 text-primary" />
+              </div>
+              <p className="text-xs text-muted-foreground">笔记本管理</p>
+            </div>
+          </div>
         </div>
       ) : (
         <>

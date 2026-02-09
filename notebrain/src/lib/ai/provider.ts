@@ -41,5 +41,5 @@ export function getChatModel() {
 export function getEmbeddingModel() {
   const provider = getProvider();
   const modelId = process.env.AI_EMBEDDING_MODEL || "text-embedding-3-small";
-  return provider.textEmbeddingModel(modelId);
+  return provider.embeddingModel(modelId);
 }

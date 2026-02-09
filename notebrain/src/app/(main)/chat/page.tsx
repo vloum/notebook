@@ -202,20 +202,21 @@ export default function ChatPage() {
       <div className="border-t border-border p-4">
         <form
           onSubmit={handleSubmit}
-          className="max-w-3xl mx-auto flex items-end gap-2"
+          className="max-w-3xl mx-auto flex gap-2 rounded-lg border border-input bg-background p-2 focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2"
         >
           <Textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="问我任何关于你知识库的问题...（Enter 发送，Shift+Enter 换行）"
-            className="resize-none min-h-[44px] max-h-[200px]"
+            className="min-h-[44px] max-h-[200px] resize-none border-0 bg-transparent shadow-none focus-visible:ring-0"
             rows={1}
           />
           <Button
             type="submit"
             size="icon"
             disabled={isLoading || !input.trim()}
+            className="h-11 w-11 shrink-0 self-end"
           >
             {isLoading ? (
               <Loader2 className="h-4 w-4 animate-spin" />

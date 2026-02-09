@@ -66,8 +66,8 @@ export default function RegisterPage() {
             创建账号，开始管理你的知识
           </CardDescription>
         </CardHeader>
-        <form onSubmit={handleSubmit}>
-          <CardContent className="space-y-4">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+          <CardContent className="space-y-4 pt-0">
             {error && (
               <div className="text-sm text-destructive text-center bg-destructive/10 p-2 rounded">
                 {error}
@@ -116,7 +116,7 @@ export default function RegisterPage() {
               />
             </div>
           </CardContent>
-          <CardFooter className="flex flex-col gap-4">
+          <CardFooter className="flex flex-col gap-4 pt-0">
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? "注册中..." : "注册"}
             </Button>

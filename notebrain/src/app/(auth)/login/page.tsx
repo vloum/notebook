@@ -51,8 +51,8 @@ export default function LoginPage() {
             AI 驱动的个人知识管理系统
           </CardDescription>
         </CardHeader>
-        <form onSubmit={handleSubmit}>
-          <CardContent className="space-y-4">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+          <CardContent className="space-y-4 pt-0">
             {error && (
               <div className="text-sm text-destructive text-center bg-destructive/10 p-2 rounded">
                 {error}
@@ -81,7 +81,7 @@ export default function LoginPage() {
               />
             </div>
           </CardContent>
-          <CardFooter className="flex flex-col gap-4">
+          <CardFooter className="flex flex-col gap-4 pt-0">
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? "登录中..." : "登录"}
             </Button>

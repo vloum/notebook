@@ -61,7 +61,7 @@ export function Topbar({ user, onToggleSidebar }: TopbarProps) {
         >
           <Menu className="h-4 w-4" />
         </Button>
-        <Link href="/" className="flex items-center gap-2 font-semibold text-foreground">
+        <Link href="/dashboard" className="flex items-center gap-2 font-semibold text-foreground">
           <Brain className="h-5 w-5 text-primary" />
           <span className="hidden sm:inline">NoteBrain</span>
         </Link>
@@ -110,7 +110,7 @@ export function Topbar({ user, onToggleSidebar }: TopbarProps) {
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-              <Link href="/settings" className="cursor-pointer">
+              <Link href="/settings#stats" className="cursor-pointer">
                 <BarChart3 className="mr-2 h-4 w-4" />
                 数据统计
               </Link>

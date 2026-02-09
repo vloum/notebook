@@ -43,7 +43,7 @@ export default function RegisterPage() {
       const data = await res.json();
 
       if (data.success) {
-        router.push("/login?registered=true");
+        router.push("/login");
       } else {
         setError(data.error || "注册失败");
       }

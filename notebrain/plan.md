@@ -1408,33 +1408,44 @@ notebrain/
 
 **目标**：能通过 MCP 和前端进行基本的文档 CRUD。
 
-- [ ] 项目初始化：Next.js + TypeScript + Tailwind + shadcn/ui
-- [ ] 数据库：PostgreSQL + Prisma schema（users, notebooks, entries, tags, entry_tags, entry_versions, agent_logs, api_keys）
-- [ ] 认证：NextAuth.js 基础登录（邮箱+密码 或 GitHub OAuth）
-- [ ] MCP 鉴权：API Key 生成、存储（SHA-256 哈希）、验证中间件
-- [ ] API 层：
+- [x] 项目初始化：Next.js + TypeScript + Tailwind + shadcn/ui
+- [x] 数据库：PostgreSQL + Prisma schema（users, notebooks, entries, tags, entry_tags, entry_versions, agent_logs, api_keys）
+- [x] 认证：NextAuth.js 基础登录（邮箱+密码）
+- [x] MCP 鉴权：API Key 生成、存储（SHA-256 哈希）、验证中间件
+- [x] API 层：
   - entries CRUD（创建、读取、更新、删除、列表）
   - notebooks CRUD
   - tags 列表
   - agent_logs 写入和读取
   - api-keys CRUD（生成、列表、禁用/启用、删除）
-- [ ] 前端：
+  - stats 数据统计
+  - chat AI 对话（流式 + Tool Calling）
+  - chat/extract-url URL 内容抓取
+- [x] 前端：
   - 整体布局（侧边栏 + 顶栏 + 底部日志条 + 主内容区）
   - 顶栏：Logo + 搜索栏（Phase 1 先做简单关键词搜索）+ 头像下拉菜单
-  - 侧边栏：笔记本列表 + 标签列表
+  - 侧边栏：笔记本列表 + 标签列表 + AI 助手入口
   - 文档列表页：卡片列表 + 排序 + 分页
-  - 文档详情页：Markdown 渲染 + 元数据展示
+  - 文档详情页：Markdown 渲染 + 元数据展示 + 关联文档
   - 文档编辑页：Markdown 编辑器
   - Agent 操作日志底部滚动条 + 完整日志页
-  - 个人设置页：基本信息 + MCP API 密钥管理（生成、禁用、删除）+ 外观设置
-- [ ] MCP Server：
+  - 个人设置页：MCP API 密钥管理 + 数据统计
+  - AI 对话页：流式问答 + Tool 调用可视化
+  - 搜索结果页 + 标签筛选页 + 笔记本筛选页
+  - 官网首页（Landing Page）+ 登录注册页
+  - 中间件认证重定向
+- [x] MCP Server：
   - 基础框架 + MCP 协议对接
-  - Tools：entries_list, entry_get (含 offset+limit 分页), entry_get_section, entry_create, entry_update, entry_append, entry_update_section, entry_replace, entry_delete
-  - Tools：notebooks_list, notebook_create
+  - Tools：entries_list, entry_get, entry_get_section, entry_create, entry_update, entry_append, entry_update_section, entry_replace, entry_delete
+  - Tools：notebooks_list, notebook_create, notebook_update, notebook_delete
   - Tools：tags_list
+  - Tools：entry_relations_list, entry_relation_create, entry_relation_delete
+  - Tools：fetch_url
   - Resources：notebooks, tags, recent_entries
-- [ ] Markdown 解析：section 切分逻辑
-- [ ] 版本历史：每次 entry_update 保存版本快照
+- [x] Markdown 解析：section 切分 + 行号分页 + 精确替换
+- [x] 版本历史：每次 entry_update 保存版本快照
+- [x] Docker 部署：docker-compose + Dockerfile + 备份脚本
+- [x] AI 模型：支持任意 OpenAI 兼容 API（自定义 baseURL + model）
 
 ### Phase 2：混合检索
 

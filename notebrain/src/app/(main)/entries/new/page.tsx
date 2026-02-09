@@ -96,7 +96,7 @@ export default function NewEntryPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <Button variant="ghost" size="sm" asChild>
-          <Link href="/">
+          <Link href="/dashboard">
             <ArrowLeft className="h-4 w-4 mr-2" />
             返回列表
           </Link>

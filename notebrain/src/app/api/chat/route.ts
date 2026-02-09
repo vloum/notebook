@@ -9,18 +9,14 @@ import { listTags } from "@/lib/services/tag.service";
 import { extractUrlContent } from "@/lib/services/url-extract.service";
 import type { EntryType } from "@/generated/prisma/enums";
 
-/*
- * AI SDK v6 tool() has a known TypeScript generics issue with zod v4:
- * The execute callback can't be inferred from zod v4 schemas.
- * The workaround is to type-assert the tool definition objects.
- * Runtime is fully correct — verified with direct JSON Schema output tests.
+/**
+ * AI SDK v6: tool() uses "inputSchema" (not "parameters").
+ * With zod v4, TS generic inference fails, so we use a typed wrapper.
  */
-
-// Helper to create a tool with zod v4 (bypasses the TS inference issue)
-function defineTool<TParams, TResult>(def: {
+function defineTool<TInput, TOutput>(def: {
   description: string;
-  parameters: z.ZodType<TParams>;
-  execute: (args: TParams) => Promise<TResult>;
+  inputSchema: z.ZodType<TInput>;
+  execute: (args: TInput) => Promise<TOutput>;
 }) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return tool(def as any);
@@ -30,7 +26,7 @@ function createTools(userId: string) {
   return {
     search_documents: defineTool({
       description: "搜索用户的知识库文档。根据查询内容返回最相关的文档列表。",
-      parameters: z.object({
+      inputSchema: z.object({
         query: z.string().describe("搜索关键词或自然语言描述"),
         tags: z.array(z.string()).optional().describe("按标签过滤"),
         type: z.enum(["note", "diary", "experience", "document"]).optional().describe("文档类型"),
@@ -63,7 +59,7 @@ function createTools(userId: string) {
 
     get_document: defineTool({
       description: "读取某篇文档的完整内容。在搜索到目标文档后使用。",
-      parameters: z.object({
+      inputSchema: z.object({
         id: z.string().describe("文档 ID"),
       }),
       execute: async ({ id }) => {
@@ -93,7 +89,7 @@ function createTools(userId: string) {
 
     fetch_url: defineTool({
       description: "从 URL 链接中抓取内容并转换为 Markdown。用于用户提供链接让你整理的场景。",
-      parameters: z.object({
+      inputSchema: z.object({
         url: z.string().describe("要抓取的 URL 地址"),
       }),
       execute: async ({ url }) => {
@@ -113,7 +109,7 @@ function createTools(userId: string) {
 
     create_document: defineTool({
       description: "创建新文档保存到知识库。",
-      parameters: z.object({
+      inputSchema: z.object({
         title: z.string().describe("文档标题"),
         content: z.string().describe("Markdown 正文"),
         tags: z.array(z.string()).optional().describe("标签"),
@@ -135,7 +131,7 @@ function createTools(userId: string) {
 
     list_notebooks: defineTool({
       description: "查看用户的笔记本和标签结构。",
-      parameters: z.object({}),
+      inputSchema: z.object({}),
       execute: async () => {
         const notebooks = await listNotebooks(userId);
         const tags = await listTags(userId);

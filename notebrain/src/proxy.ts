@@ -2,13 +2,10 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 /**
- * Middleware to handle auth redirects:
- * - Unauthenticated users accessing /dashboard/* → redirect to /login
- * - The landing page (/) is always accessible
- * - /login and /register are always accessible
- * - API routes handle their own auth
+ * Next.js 16 proxy (replaces middleware).
+ * Must export a function named "proxy" or a default export.
  */
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Public paths - always accessible
@@ -42,7 +39,6 @@ export function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // Match all paths except static files
     "/((?!_next/static|_next/image|favicon.ico|logo.svg|.*\\.svg$|.*\\.png$).*)",
   ],
 };

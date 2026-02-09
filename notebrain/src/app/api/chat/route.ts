@@ -1,4 +1,4 @@
-import { streamText, convertToModelMessages, stepCountIs } from "ai";
+import { streamText, convertToModelMessages, stepCountIs, zodSchema } from "ai";
 import { z } from "zod";
 import { NextRequest } from "next/server";
 import { requireAuth } from "@/lib/auth/api-key";
@@ -9,17 +9,19 @@ import { listTags } from "@/lib/services/tag.service";
 import { extractUrlContent } from "@/lib/services/url-extract.service";
 import type { EntryType } from "@/generated/prisma/enums";
 
-// Define tools with explicit typing to avoid zod v4 inference issues
+// Build tools with explicit zodSchema() wrapping for zod v4 compatibility
 const createTools = (userId: string) => ({
   search_documents: {
     description:
       "搜索用户的知识库文档。根据查询内容返回最相关的文档列表。",
-    parameters: z.object({
-      query: z.string().describe("搜索关键词或自然语言描述"),
-      tags: z.array(z.string()).optional().describe("按标签过滤"),
-      type: z.enum(["note", "diary", "experience", "document"]).optional(),
-      limit: z.number().optional().default(5),
-    }),
+    parameters: zodSchema(
+      z.object({
+        query: z.string().describe("搜索关键词或自然语言描述"),
+        tags: z.array(z.string()).optional().describe("按标签过滤"),
+        type: z.enum(["note", "diary", "experience", "document"]).optional().describe("文档类型"),
+        limit: z.number().optional().describe("返回数量，默认5"),
+      })
+    ),
     execute: async (args: { query: string; tags?: string[]; type?: string; limit?: number }) => {
       const result = await listEntries(userId, {
         tagNames: args.tags,
@@ -47,9 +49,11 @@ const createTools = (userId: string) => ({
 
   get_document: {
     description: "读取某篇文档的完整内容。在搜索到目标文档后使用。",
-    parameters: z.object({
-      id: z.string().describe("文档 ID"),
-    }),
+    parameters: zodSchema(
+      z.object({
+        id: z.string().describe("文档 ID"),
+      })
+    ),
     execute: async (args: { id: string }) => {
       const entry = await getEntry(userId, args.id, { mode: "full" });
       if (!entry) return { error: "文档不存在" };
@@ -76,10 +80,12 @@ const createTools = (userId: string) => ({
   },
 
   fetch_url: {
-    description: "从 URL 链接中抓取内容并转换为 Markdown。",
-    parameters: z.object({
-      url: z.string().describe("要抓取的 URL 地址"),
-    }),
+    description: "从 URL 链接中抓取内容并转换为 Markdown。用于用户提供链接让你整理的场景。",
+    parameters: zodSchema(
+      z.object({
+        url: z.string().describe("要抓取的 URL 地址"),
+      })
+    ),
     execute: async (args: { url: string }) => {
       const result = await extractUrlContent(args.url);
       if ("error" in result) return { error: result.error };
@@ -97,13 +103,15 @@ const createTools = (userId: string) => ({
 
   create_document: {
     description: "创建新文档保存到知识库。",
-    parameters: z.object({
-      title: z.string().describe("文档标题"),
-      content: z.string().describe("Markdown 正文"),
-      tags: z.array(z.string()).optional().describe("标签"),
-      type: z.enum(["note", "diary", "experience", "document"]).optional().default("note"),
-      notebook_id: z.string().optional().describe("笔记本 ID"),
-    }),
+    parameters: zodSchema(
+      z.object({
+        title: z.string().describe("文档标题"),
+        content: z.string().describe("Markdown 正文"),
+        tags: z.array(z.string()).optional().describe("标签"),
+        type: z.enum(["note", "diary", "experience", "document"]).optional().describe("文档类型，默认note"),
+        notebook_id: z.string().optional().describe("笔记本 ID"),
+      })
+    ),
     execute: async (args: { title: string; content: string; tags?: string[]; type?: string; notebook_id?: string }) => {
       const result = await createEntry(userId, {
         title: args.title,
@@ -119,7 +127,9 @@ const createTools = (userId: string) => ({
 
   list_notebooks: {
     description: "查看用户的笔记本和标签结构。",
-    parameters: z.object({}),
+    parameters: zodSchema(
+      z.object({})
+    ),
     execute: async () => {
       const notebooks = await listNotebooks(userId);
       const tags = await listTags(userId);

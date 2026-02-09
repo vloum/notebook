@@ -108,7 +108,7 @@ export default function EntryDetailPage() {
       <div className="p-6 max-w-4xl mx-auto text-center py-16">
         <p className="text-muted-foreground">文档不存在</p>
         <Button variant="link" asChild className="mt-2">
-          <Link href="/">返回列表</Link>
+          <Link href="/dashboard">返回列表</Link>
         </Button>
       </div>
     );
@@ -119,7 +119,7 @@ export default function EntryDetailPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <Button variant="ghost" size="sm" asChild>
-          <Link href="/">
+          <Link href="/dashboard">
             <ArrowLeft className="h-4 w-4 mr-2" />
             返回列表
           </Link>

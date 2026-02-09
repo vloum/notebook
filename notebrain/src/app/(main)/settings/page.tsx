@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Key, Plus, Copy, Check, Trash2, Ban, CircleCheck } from "lucide-react";
+import { Key, Plus, Copy, Check, Trash2, Ban, CircleCheck, BarChart3, FileText, BookOpen, Tag, Bot, KeyRound, Type } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,6 +26,20 @@ import {
 import { formatDistanceToNow } from "date-fns";
 import { zhCN } from "date-fns/locale";
 
+interface StatsData {
+  overview: {
+    totalEntries: number;
+    totalNotebooks: number;
+    totalTags: number;
+    totalWords: number;
+    activeApiKeys: number;
+    agentOperations30d: number;
+  };
+  byType: { type: string; label: string; count: number }[];
+  bySource: { source: string; label: string; count: number }[];
+  topTags: { name: string; color: string | null; count: number }[];
+}
+
 interface ApiKeyItem {
   id: string;
   name: string;
@@ -38,6 +52,7 @@ interface ApiKeyItem {
 
 export default function SettingsPage() {
   const [apiKeys, setApiKeys] = useState<ApiKeyItem[]>([]);
+  const [stats, setStats] = useState<StatsData | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Create key dialog
@@ -52,7 +67,18 @@ export default function SettingsPage() {
 
   useEffect(() => {
     fetchKeys();
+    fetchStats();
   }, []);
+
+  const fetchStats = async () => {
+    try {
+      const res = await fetch("/api/stats");
+      const data = await res.json();
+      if (data.success) setStats(data.data);
+    } catch {
+      // ignore
+    }
+  };
 
   const fetchKeys = async () => {
     try {
@@ -261,6 +287,142 @@ export default function SettingsPage() {
                 </div>
               ))}
             </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Data Statistics */}
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <BarChart3 className="h-5 w-5" />
+            数据统计
+          </CardTitle>
+          <CardDescription>知识库的整体使用情况</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {!stats ? (
+            <div className="grid grid-cols-3 gap-4">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="h-20 bg-muted animate-pulse rounded-lg" />
+              ))}
+            </div>
+          ) : (
+            <>
+              {/* Overview grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-6">
+                <div className="rounded-lg border border-border p-4 text-center">
+                  <FileText className="h-5 w-5 mx-auto mb-2 text-blue-500" />
+                  <p className="text-2xl font-bold">{stats.overview.totalEntries}</p>
+                  <p className="text-xs text-muted-foreground">文档总数</p>
+                </div>
+                <div className="rounded-lg border border-border p-4 text-center">
+                  <BookOpen className="h-5 w-5 mx-auto mb-2 text-green-500" />
+                  <p className="text-2xl font-bold">{stats.overview.totalNotebooks}</p>
+                  <p className="text-xs text-muted-foreground">笔记本</p>
+                </div>
+                <div className="rounded-lg border border-border p-4 text-center">
+                  <Tag className="h-5 w-5 mx-auto mb-2 text-yellow-500" />
+                  <p className="text-2xl font-bold">{stats.overview.totalTags}</p>
+                  <p className="text-xs text-muted-foreground">标签</p>
+                </div>
+                <div className="rounded-lg border border-border p-4 text-center">
+                  <Type className="h-5 w-5 mx-auto mb-2 text-purple-500" />
+                  <p className="text-2xl font-bold">{stats.overview.totalWords.toLocaleString()}</p>
+                  <p className="text-xs text-muted-foreground">总字数</p>
+                </div>
+                <div className="rounded-lg border border-border p-4 text-center">
+                  <Bot className="h-5 w-5 mx-auto mb-2 text-orange-500" />
+                  <p className="text-2xl font-bold">{stats.overview.agentOperations30d}</p>
+                  <p className="text-xs text-muted-foreground">AI 操作 (30天)</p>
+                </div>
+                <div className="rounded-lg border border-border p-4 text-center">
+                  <KeyRound className="h-5 w-5 mx-auto mb-2 text-indigo-500" />
+                  <p className="text-2xl font-bold">{stats.overview.activeApiKeys}</p>
+                  <p className="text-xs text-muted-foreground">活跃密钥</p>
+                </div>
+              </div>
+
+              {/* Type & Source breakdown */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                <div className="rounded-lg border border-border p-4">
+                  <h4 className="text-sm font-medium mb-3">按类型分布</h4>
+                  {stats.byType.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">暂无数据</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {stats.byType.map((item) => (
+                        <div key={item.type} className="flex items-center justify-between">
+                          <span className="text-sm">{item.label}</span>
+                          <div className="flex items-center gap-2">
+                            <div className="w-24 h-2 bg-muted rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-primary rounded-full"
+                                style={{
+                                  width: `${Math.round((item.count / stats.overview.totalEntries) * 100)}%`,
+                                }}
+                              />
+                            </div>
+                            <span className="text-xs text-muted-foreground w-8 text-right">
+                              {item.count}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className="rounded-lg border border-border p-4">
+                  <h4 className="text-sm font-medium mb-3">按来源分布</h4>
+                  {stats.bySource.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">暂无数据</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {stats.bySource.map((item) => (
+                        <div key={item.source} className="flex items-center justify-between">
+                          <span className="text-sm">{item.label}</span>
+                          <div className="flex items-center gap-2">
+                            <div className="w-24 h-2 bg-muted rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-green-500 rounded-full"
+                                style={{
+                                  width: `${Math.round((item.count / stats.overview.totalEntries) * 100)}%`,
+                                }}
+                              />
+                            </div>
+                            <span className="text-xs text-muted-foreground w-8 text-right">
+                              {item.count}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Top tags */}
+              {stats.topTags.length > 0 && (
+                <div className="rounded-lg border border-border p-4">
+                  <h4 className="text-sm font-medium mb-3">热门标签 Top 10</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {stats.topTags.map((tag) => (
+                      <span
+                        key={tag.name}
+                        className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full border border-border"
+                      >
+                        <span
+                          className="h-2 w-2 rounded-full"
+                          style={{ backgroundColor: tag.color || "#6b7280" }}
+                        />
+                        {tag.name}
+                        <span className="text-muted-foreground">({tag.count})</span>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </CardContent>
       </Card>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Topbar } from "@/components/layout/topbar";
 import { LogTicker } from "@/components/layout/log-ticker";
@@ -34,25 +35,53 @@ export default function MainLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const router = useRouter();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [notebooks, setNotebooks] = useState<NotebookItem[]>([]);
   const [tags, setTags] = useState<TagItem[]>([]);
   const [logs, setLogs] = useState<LogItem[]>([]);
+  const [authed, setAuthed] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Fetch sidebar data
+    // Fetch sidebar data — also serves as auth check
     Promise.all([
-      fetch("/api/notebooks").then((r) => r.json()),
-      fetch("/api/tags").then((r) => r.json()),
-      fetch("/api/logs?recent=10").then((r) => r.json()),
-    ]).then(([nbRes, tagRes, logRes]) => {
+      fetch("/api/notebooks"),
+      fetch("/api/tags"),
+      fetch("/api/logs?recent=10"),
+    ]).then(async ([nbRaw, tagRaw, logRaw]) => {
+      // If any API returns 401, middleware should have caught it
+      // but handle gracefully just in case
+      if (nbRaw.status === 401) {
+        router.replace("/login");
+        return;
+      }
+
+      const [nbRes, tagRes, logRes] = await Promise.all([
+        nbRaw.json(),
+        tagRaw.json(),
+        logRaw.json(),
+      ]);
+
       if (nbRes.success) setNotebooks(nbRes.data.notebooks);
       if (tagRes.success) setTags(tagRes.data.tags);
       if (logRes.success) setLogs(logRes.data.logs);
+      setAuthed(true);
     }).catch(() => {
-      // Not authenticated or API error - will be handled by auth redirect
+      router.replace("/login");
+    }).finally(() => {
+      setLoading(false);
     });
-  }, []);
+  }, [router]);
+
+  // Show nothing while checking auth
+  if (loading || !authed) {
+    return (
+      <div className="h-screen flex items-center justify-center">
+        <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="h-screen flex flex-col">

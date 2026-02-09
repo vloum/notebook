@@ -1,5 +1,4 @@
-import { streamText, convertToModelMessages, stepCountIs, zodSchema } from "ai";
-import { z } from "zod";
+import { streamText, convertToModelMessages, stepCountIs, jsonSchema } from "ai";
 import { NextRequest } from "next/server";
 import { requireAuth } from "@/lib/auth/api-key";
 import { getChatModel } from "@/lib/ai/provider";
@@ -9,19 +8,25 @@ import { listTags } from "@/lib/services/tag.service";
 import { extractUrlContent } from "@/lib/services/url-extract.service";
 import type { EntryType } from "@/generated/prisma/enums";
 
-// Build tools with explicit zodSchema() wrapping for zod v4 compatibility
+/**
+ * Use jsonSchema() with explicit JSON Schema definitions.
+ * This bypasses all zod-to-JSON-Schema conversion issues.
+ */
 const createTools = (userId: string) => ({
   search_documents: {
     description:
       "搜索用户的知识库文档。根据查询内容返回最相关的文档列表。",
-    parameters: zodSchema(
-      z.object({
-        query: z.string().describe("搜索关键词或自然语言描述"),
-        tags: z.array(z.string()).optional().describe("按标签过滤"),
-        type: z.enum(["note", "diary", "experience", "document"]).optional().describe("文档类型"),
-        limit: z.number().optional().describe("返回数量，默认5"),
-      })
-    ),
+    parameters: jsonSchema<{ query: string; tags?: string[]; type?: string; limit?: number }>({
+      type: "object",
+      properties: {
+        query: { type: "string", description: "搜索关键词或自然语言描述" },
+        tags: { type: "array", items: { type: "string" }, description: "按标签过滤" },
+        type: { type: "string", enum: ["note", "diary", "experience", "document"], description: "文档类型" },
+        limit: { type: "number", description: "返回数量，默认5" },
+      },
+      required: ["query"],
+      additionalProperties: false,
+    }),
     execute: async (args: { query: string; tags?: string[]; type?: string; limit?: number }) => {
       const result = await listEntries(userId, {
         tagNames: args.tags,
@@ -49,11 +54,14 @@ const createTools = (userId: string) => ({
 
   get_document: {
     description: "读取某篇文档的完整内容。在搜索到目标文档后使用。",
-    parameters: zodSchema(
-      z.object({
-        id: z.string().describe("文档 ID"),
-      })
-    ),
+    parameters: jsonSchema<{ id: string }>({
+      type: "object",
+      properties: {
+        id: { type: "string", description: "文档 ID" },
+      },
+      required: ["id"],
+      additionalProperties: false,
+    }),
     execute: async (args: { id: string }) => {
       const entry = await getEntry(userId, args.id, { mode: "full" });
       if (!entry) return { error: "文档不存在" };
@@ -81,11 +89,14 @@ const createTools = (userId: string) => ({
 
   fetch_url: {
     description: "从 URL 链接中抓取内容并转换为 Markdown。用于用户提供链接让你整理的场景。",
-    parameters: zodSchema(
-      z.object({
-        url: z.string().describe("要抓取的 URL 地址"),
-      })
-    ),
+    parameters: jsonSchema<{ url: string }>({
+      type: "object",
+      properties: {
+        url: { type: "string", description: "要抓取的 URL 地址" },
+      },
+      required: ["url"],
+      additionalProperties: false,
+    }),
     execute: async (args: { url: string }) => {
       const result = await extractUrlContent(args.url);
       if ("error" in result) return { error: result.error };
@@ -103,15 +114,18 @@ const createTools = (userId: string) => ({
 
   create_document: {
     description: "创建新文档保存到知识库。",
-    parameters: zodSchema(
-      z.object({
-        title: z.string().describe("文档标题"),
-        content: z.string().describe("Markdown 正文"),
-        tags: z.array(z.string()).optional().describe("标签"),
-        type: z.enum(["note", "diary", "experience", "document"]).optional().describe("文档类型，默认note"),
-        notebook_id: z.string().optional().describe("笔记本 ID"),
-      })
-    ),
+    parameters: jsonSchema<{ title: string; content: string; tags?: string[]; type?: string; notebook_id?: string }>({
+      type: "object",
+      properties: {
+        title: { type: "string", description: "文档标题" },
+        content: { type: "string", description: "Markdown 正文" },
+        tags: { type: "array", items: { type: "string" }, description: "标签" },
+        type: { type: "string", enum: ["note", "diary", "experience", "document"], description: "文档类型，默认note" },
+        notebook_id: { type: "string", description: "笔记本 ID" },
+      },
+      required: ["title", "content"],
+      additionalProperties: false,
+    }),
     execute: async (args: { title: string; content: string; tags?: string[]; type?: string; notebook_id?: string }) => {
       const result = await createEntry(userId, {
         title: args.title,
@@ -127,9 +141,11 @@ const createTools = (userId: string) => ({
 
   list_notebooks: {
     description: "查看用户的笔记本和标签结构。",
-    parameters: zodSchema(
-      z.object({})
-    ),
+    parameters: jsonSchema<Record<string, never>>({
+      type: "object",
+      properties: {},
+      additionalProperties: false,
+    }),
     execute: async () => {
       const notebooks = await listNotebooks(userId);
       const tags = await listTags(userId);

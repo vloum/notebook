@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth/api-key";
+import { requireUuid } from "@/lib/utils/validation";
 import { updateNotebook, deleteNotebook } from "@/lib/services/notebook.service";
 
 export async function PUT(
@@ -9,13 +10,14 @@ export async function PUT(
   const authResult = await requireAuth(req);
   if (authResult instanceof Response) return authResult;
   const { userId } = authResult;
-  const { id } = await params;
+  const idOrError = requireUuid((await params).id);
+  if (idOrError instanceof NextResponse) return idOrError;
 
   try {
     const body = await req.json();
     const { name, description, icon } = body;
 
-    const result = await updateNotebook(userId, id, { name, description, icon });
+    const result = await updateNotebook(userId, idOrError, { name, description, icon });
     if (!result) {
       return NextResponse.json(
         { success: false, error: "笔记本不存在" },
@@ -40,9 +42,10 @@ export async function DELETE(
   const authResult = await requireAuth(req);
   if (authResult instanceof Response) return authResult;
   const { userId } = authResult;
-  const { id } = await params;
+  const idOrError = requireUuid((await params).id);
+  if (idOrError instanceof NextResponse) return idOrError;
 
-  const result = await deleteNotebook(userId, id);
+  const result = await deleteNotebook(userId, idOrError);
   if (!result) {
     return NextResponse.json(
       { success: false, error: "笔记本不存在" },

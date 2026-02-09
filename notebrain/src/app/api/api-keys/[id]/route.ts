@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth/api-key";
+import { requireUuid } from "@/lib/utils/validation";
 import { toggleApiKey, deleteApiKey } from "@/lib/services/api-key.service";
 
 export async function PUT(
@@ -9,7 +10,8 @@ export async function PUT(
   const authResult = await requireAuth(req);
   if (authResult instanceof Response) return authResult;
   const { userId } = authResult;
-  const { id } = await params;
+  const idOrError = requireUuid((await params).id);
+  if (idOrError instanceof NextResponse) return idOrError;
 
   try {
     const body = await req.json();
@@ -22,7 +24,7 @@ export async function PUT(
       );
     }
 
-    const success = await toggleApiKey(userId, id, is_active);
+    const success = await toggleApiKey(userId, idOrError, is_active);
     if (!success) {
       return NextResponse.json(
         { success: false, error: "密钥不存在" },
@@ -47,9 +49,10 @@ export async function DELETE(
   const authResult = await requireAuth(req);
   if (authResult instanceof Response) return authResult;
   const { userId } = authResult;
-  const { id } = await params;
+  const idOrError = requireUuid((await params).id);
+  if (idOrError instanceof NextResponse) return idOrError;
 
-  const success = await deleteApiKey(userId, id);
+  const success = await deleteApiKey(userId, idOrError);
   if (!success) {
     return NextResponse.json(
       { success: false, error: "密钥不存在" },

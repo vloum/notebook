@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth/api-key";
+import { sanitizeUuid } from "@/lib/utils/validation";
 import { listEntries } from "@/lib/services/entry.service";
 import type { EntryType } from "@/generated/prisma/enums";
 
@@ -26,7 +27,7 @@ export async function POST(req: NextRequest) {
     // Phase 1: Simple keyword search using list + filter
     // This will be replaced by hybrid search in Phase 2
     const result = await listEntries(userId, {
-      notebookId: filters?.notebook_id,
+      notebookId: sanitizeUuid(filters?.notebook_id),
       tagNames: filters?.tags,
       type: filters?.type as EntryType,
       pageSize: limit,

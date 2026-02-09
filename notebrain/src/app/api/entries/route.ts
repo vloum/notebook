@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth/api-key";
 import { listEntries, createEntry } from "@/lib/services/entry.service";
+import { sanitizeUuid } from "@/lib/utils/validation";
 import type { EntryType, EntrySource } from "@/generated/prisma/enums";
 
 export async function GET(req: NextRequest) {
@@ -10,7 +11,7 @@ export async function GET(req: NextRequest) {
 
   const url = req.nextUrl.searchParams;
   const result = await listEntries(userId, {
-    notebookId: url.get("notebook_id") ?? undefined,
+    notebookId: sanitizeUuid(url.get("notebook_id")),
     tagNames: url.get("tags") ? url.get("tags")!.split(",") : undefined,
     type: (url.get("type") as EntryType) ?? undefined,
     sortBy: url.get("sort_by") ?? undefined,
@@ -41,7 +42,7 @@ export async function POST(req: NextRequest) {
     const result = await createEntry(userId, {
       title,
       content,
-      notebookId: notebook_id,
+      notebookId: sanitizeUuid(notebook_id),
       tags,
       type: type as EntryType,
       summary,

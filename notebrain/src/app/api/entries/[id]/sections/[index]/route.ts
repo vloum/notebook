@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth/api-key";
+import { requireUuid } from "@/lib/utils/validation";
 import { getEntrySection, updateEntrySection } from "@/lib/services/entry.service";
 import type { EntrySource } from "@/generated/prisma/enums";
 
@@ -11,6 +12,8 @@ export async function GET(
   if (authResult instanceof Response) return authResult;
   const { userId } = authResult;
   const { id, index } = await params;
+  const idOrError = requireUuid(id);
+  if (idOrError instanceof NextResponse) return idOrError;
 
   const sectionIndex = parseInt(index);
   if (isNaN(sectionIndex)) {
@@ -20,7 +23,7 @@ export async function GET(
     );
   }
 
-  const result = await getEntrySection(userId, id, sectionIndex);
+  const result = await getEntrySection(userId, idOrError, sectionIndex);
   if (!result) {
     return NextResponse.json(
       { success: false, error: "文档或 section 不存在" },
@@ -39,6 +42,8 @@ export async function PUT(
   if (authResult instanceof Response) return authResult;
   const { userId } = authResult;
   const { id, index } = await params;
+  const idOrError = requireUuid(id);
+  if (idOrError instanceof NextResponse) return idOrError;
 
   const sectionIndex = parseInt(index);
   if (isNaN(sectionIndex)) {
@@ -59,7 +64,7 @@ export async function PUT(
       );
     }
 
-    const result = await updateEntrySection(userId, id, sectionIndex, {
+    const result = await updateEntrySection(userId, idOrError, sectionIndex, {
       content,
       version,
       source: source as EntrySource,

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth/api-key";
+import { requireUuid } from "@/lib/utils/validation";
 import { appendEntry } from "@/lib/services/entry.service";
 import type { EntrySource } from "@/generated/prisma/enums";
 
@@ -10,7 +11,9 @@ export async function POST(
   const authResult = await requireAuth(req);
   if (authResult instanceof Response) return authResult;
   const { userId } = authResult;
-  const { id } = await params;
+  const idOrError = requireUuid((await params).id);
+  if (idOrError instanceof NextResponse) return idOrError;
+  const id = idOrError;
 
   try {
     const body = await req.json();
